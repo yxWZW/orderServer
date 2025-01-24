@@ -202,8 +202,12 @@ router.post("/detail", async (ctx, next) => {
     const waybillDetail = waybillRes[0];
     const { client_id, order_list, status_line } = waybillDetail;
 
+    console.log("1---------wzw----------waybillDetail", waybillDetail);
+
     // 获取客户信息
     const clientRes = await userService.getClientInfo(client_id);
+
+    console.log("2---------wzw----------clientRes", clientRes);
 
     // 获取订单列表
     const orderList = JSON.parse(order_list);
@@ -211,17 +215,22 @@ router.post("/detail", async (ctx, next) => {
       line.getListString(orderList)
     );
 
+    console.log("3---------wzw----------orderRes", orderRes);
+
     // 获取货单状态列表
     const statusList = JSON.parse(status_line);
     const statusRes = await userService.getStatusDetail(
       line.getListString(statusList)
-    );    
+    );
+
+    console.log("4---------wzw----------statusRes", statusRes);
 
     // 整合运单和司机信息
     let freightDriverMap = {};
     const freightList = orderRes.map((i) => i.freight_id);
-    [...new Set(freightList)].map(async (i, index) => {      
+    const freightListSync = [...new Set(freightList)].map(async (i) => {
       const driverRes = await userService.getDriverInfo(i);
+      console.log("44444---------wzw----------driverRes", driverRes);
       freightDriverMap = {
         ...freightDriverMap,
         [i]: {
@@ -231,12 +240,17 @@ router.post("/detail", async (ctx, next) => {
         },
       };
     });
+    await Promise.all(freightListSync);
+
+    console.log("5---------wzw----------freightDriverMap", freightDriverMap);
 
     // 获取商品列表
     const productList = orderRes.map((i) => i.product_id);
     const productRes = await userService.getProductDetail(
       line.getListString(productList)
     );
+
+    console.log("6---------wzw----------productRes", productRes);
 
     let productMap = {};
     productRes.forEach((i) => {
@@ -246,6 +260,8 @@ router.post("/detail", async (ctx, next) => {
       };
     });
 
+    console.log("7---------wzw----------productMap", productMap);
+
     // 整合订单和商品信息
     const orderProductList = orderRes.map((i) => {
       return {
@@ -254,18 +270,24 @@ router.post("/detail", async (ctx, next) => {
       };
     });
 
+    console.log("8---------wzw----------orderProductList", orderProductList);
+
     // 整合司机订单和商品信息
     orderProductList.map((i) => {
       const orderList = freightDriverMap[i.freight_id].orderList;
-      freightDriverMap[i.freight_id].orderList = [...orderList, i]
+      freightDriverMap[i.freight_id].orderList = [...orderList, i];
     });
+
+    console.log("9---------wzw----------freightDriverMap", freightDriverMap);
 
     const waybillInfo = {
       ...waybillDetail,
       clientInfo: clientRes[0],
       statusInfo: statusRes,
-      freightOrderInfo: Object.values(freightDriverMap)
+      freightOrderInfo: Object.values(freightDriverMap),
     };
+
+    console.log("10---------wzw----------waybillInfo", waybillInfo);
 
     ctx.body = {
       code: 200,
